@@ -1,0 +1,5 @@
+*.log
+.env
+*.key
+token*
+secrets*

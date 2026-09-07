@@ -1,0 +1,36 @@
+name: watch-upstream-tcm-3d
+
+# 每日检查上游 JICio/tcm-3d 是否有新提交；有则自动开 Issue 提醒升级同步
+on:
+  schedule:
+    - cron: '17 1 * * *'   # 每天 09:17 (UTC+8)
+  workflow_dispatch:        # 也支持手动触发
+
+permissions:
+  issues: write
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - name: 比对上游最新提交
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -e
+          LATEST=$(curl -s https://api.github.com/repos/JICio/tcm-3d/commits?per_page=1)
+          SHA=$(echo "$LATEST" | python3 -c "import json,sys;print(json.load(sys.stdin)[0]['sha'][:12])")
+          DATE=$(echo "$LATEST" | python3 -c "import json,sys;print(json.load(sys.stdin)[0]['commit']['committer']['date'])")
+          MSG=$(echo "$LATEST" | python3 -c "import json,sys;print(json.load(sys.stdin)[0]['commit']['message'].splitlines()[0])")
+          SEEN_FILE=.upstream-tcm-3d-sha
+          OLD=$(git show HEAD:$SEEN_FILE 2>/dev/null || echo none)
+          echo "上游最新: $SHA ($DATE) $MSG / 已记录: $OLD"
+          if [ "$SHA" != "$OLD" ]; then
+            gh issue create \
+              --title "上游 tcm-3d 有更新：$SHA" \
+              --body "JICio/tcm-3d 检测到新提交：\n\n- SHA: $SHA\n- 时间: $DATE\n- 说明: $MSG\n\n请评估是否将新内容同步进本系统（如穴位数据、定位修正），更新后请把新的 SHA 写入 $SEEN_FILE 并关闭本 Issue。" \
+              --label "upstream-sync" || true
+            echo "已创建升级提醒 Issue"
+          else
+            echo "上游无变化"
+          fi

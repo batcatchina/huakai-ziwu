@@ -1,0 +1,619 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<title>移光定位 · 花开子午</title>
+<style>
+    * { margin:0; padding:0; box-sizing:border-box; font-family:'Segoe UI','PingFang SC','Microsoft YaHei',system-ui,sans-serif; }
+    body {
+        background: radial-gradient(circle at 50% 36%, #0d1228 0%, #060810 60%, #020204 100%);
+        min-height:100vh; display:flex; justify-content:center; align-items:center; padding:16px;
+    }
+    .container {
+        max-width:440px; width:100%;
+        background: linear-gradient(145deg, rgba(18,22,48,.96), rgba(8,10,24,.98));
+        border-radius:32px; padding:20px 18px 22px;
+        box-shadow:0 24px 72px rgba(0,0,0,.85), 0 0 0 1px rgba(255,215,0,.12);
+        border:1px solid rgba(255,215,0,.14);
+        transition:box-shadow .8s;
+    }
+    .container.kai-tianmen { animation:kaiPulse 2s ease-in-out infinite; }
+    @keyframes kaiPulse {
+        0%,100% { box-shadow:0 0 50px rgba(255,215,0,.3), 0 24px 72px rgba(0,0,0,.85); }
+        50%     { box-shadow:0 0 110px rgba(255,215,0,.65), 0 24px 72px rgba(0,0,0,.85); border-color:rgba(255,215,0,.6); }
+    }
+    .title-bar { text-align:center; margin-bottom:12px; }
+    .title-bar h1 { font-size:15px; font-weight:700; color:rgba(255,215,0,.78); letter-spacing:4px; }
+    .title-bar p { font-size:11px; color:#5a6a88; letter-spacing:2px; margin-top:3px; }
+
+    .header { display:flex; justify-content:space-between; align-items:center; margin-bottom:14px; padding:0 4px; }
+    .time-now { font-size:21px; font-weight:700; color:#f0e8b0; letter-spacing:1px; font-variant-numeric:tabular-nums; }
+    .ganzhi { background:rgba(255,215,0,.1); border:1px solid rgba(255,215,0,.25); padding:5px 13px; border-radius:30px; color:#ffd966; font-size:12px; font-weight:500; }
+    .ganzhi .g { color:#ffb347; font-weight:700; }
+    .ganzhi .kai { color:#8fa0c0; }
+
+    /* ── 开天门状态条 ── */
+    .kai-banner {
+        margin-bottom:14px; text-align:center; padding:9px 12px; border-radius:16px;
+        background:rgba(255,215,0,.06); border:1px solid rgba(255,215,0,.18);
+        font-size:12.5px; color:#c8b060; letter-spacing:1px; line-height:1.7;
+        transition:all .6s;
+    }
+    .kai-banner em { color:#ffe9a0; font-style:normal; font-weight:700; }
+    .kai-banner.open {
+        background:linear-gradient(135deg, rgba(255,220,80,.28), rgba(255,180,40,.18));
+        border-color:rgba(255,215,0,.65); color:#ffe9a0;
+        box-shadow:0 0 26px rgba(255,200,60,.3);
+        animation:kaiGlow 1.6s ease-in-out infinite;
+    }
+    @keyframes kaiGlow { 0%,100%{ box-shadow:0 0 14px rgba(255,200,60,.25);} 50%{ box-shadow:0 0 34px rgba(255,210,80,.55);} }
+
+    /* ── 时钟 ── */
+    .clock-wrap { position:relative; width:100%; aspect-ratio:1/1; max-width:400px; margin:0 auto; }
+    .clock {
+        position:relative; width:100%; height:100%; border-radius:50%;
+        background:radial-gradient(circle at 40% 38%, #18203a 0%, #0c1020 55%, #080a18 100%);
+        box-shadow:inset 0 0 60px rgba(0,0,0,.9), 0 0 30px rgba(255,215,0,.06);
+        border:1.5px solid rgba(255,215,0,.16);
+        transition:box-shadow .8s;
+    }
+    .clock.kai { box-shadow:inset 0 0 80px rgba(255,215,0,.22), 0 0 60px rgba(255,215,0,.45); border-color:rgba(255,215,0,.55); }
+    .shi-chen-label {
+        position:absolute; width:28px; height:28px; border-radius:50%;
+        display:flex; align-items:center; justify-content:center;
+        font-size:12px; font-weight:700; color:#46557a;
+        background:rgba(8,10,22,.75); border:1px solid rgba(255,215,0,.08);
+        transform:translate(-50%,-50%); transition:all .6s; z-index:5;
+    }
+    .shi-chen-label.active {
+        color:#1a1408; background:radial-gradient(circle,#ffe9a0,#ffd24d);
+        border-color:rgba(255,215,0,.9); box-shadow:0 0 18px rgba(255,215,0,.8);
+        transform:translate(-50%,-50%) scale(1.2);
+    }
+    /* 五穴花瓣：小巧内环，顺次绽放 */
+    .petals { position:absolute; inset:0; z-index:2; pointer-events:none; }
+    .petal {
+        position:absolute; width:15.5%; height:15.5%;
+        border-radius:50% 50% 50% 10%;
+        display:flex; align-items:center; justify-content:center;
+        text-align:center; line-height:1.3; word-break:keep-all; padding:2px;
+        font-size:10.5px; font-weight:500; color:#8a9ab8;
+        background:rgba(50,70,120,.16); border:1px solid rgba(255,255,255,.07);
+        transition:all .8s cubic-bezier(.34,1.3,.64,1);
+    }
+    .petal .name { display:block; font-size:10.5px; text-shadow:0 0 8px rgba(0,0,0,.85); }
+    .petal.jing  { background:rgba(0,200,255,.12);  border-color:rgba(0,200,255,.22); }
+    .petal.ying  { background:rgba(0,255,150,.11);  border-color:rgba(0,255,150,.22); }
+    .petal.shu   { background:rgba(255,215,0,.12);  border-color:rgba(255,215,0,.22); }
+    .petal.jing2 { background:rgba(255,160,0,.12);  border-color:rgba(255,160,0,.22); }
+    .petal.he    { background:rgba(255,80,80,.12);  border-color:rgba(255,80,80,.22); }
+    .petal.active {
+        color:#fff; font-weight:700; border-width:1.5px; z-index:3;
+        animation:bloomPop 1s cubic-bezier(.34,1.45,.64,1);
+    }
+    .petal.active .name { font-size:11px; }
+    @keyframes bloomPop {
+        0%   { opacity:.2; }
+        55%  { opacity:1; }
+        100% { opacity:1; }
+    }
+    .petal.active.jing  { background:rgba(0,200,255,.55);  border-color:#00ccff; box-shadow:0 0 20px #00ccff77; }
+    .petal.active.ying  { background:rgba(0,255,150,.5);   border-color:#00ff99; box-shadow:0 0 20px #00ff9977; }
+    .petal.active.shu   { background:rgba(255,215,0,.55);  border-color:#ffd700; box-shadow:0 0 20px #ffd70077; }
+    .petal.active.jing2 { background:rgba(255,160,0,.55);  border-color:#ffa500; box-shadow:0 0 20px #ffa50077; }
+    .petal.active.he    { background:rgba(255,80,80,.55);  border-color:#ff5555; box-shadow:0 0 20px #ff555577; }
+
+    .center-label {
+        position:absolute; left:50%; top:50%; transform:translate(-50%,-50%);
+        text-align:center; pointer-events:none; z-index:4;
+        background:rgba(0,0,0,.6); padding:5px 12px; border-radius:40px;
+        border:1px solid rgba(255,215,0,.16); line-height:1.45;
+    }
+    .center-label .big { font-size:15px; font-weight:700; color:#ffd966; }
+    .center-label .sub { font-size:10.5px; color:#aabbdd; max-width:90px; }
+
+    /* ── 信息卡 ── */
+    .info-card {
+        margin-top:14px; text-align:center; padding:11px 14px;
+        background:rgba(255,215,0,.05); border:1px solid rgba(255,215,0,.14);
+        border-radius:18px; font-size:12.5px; color:#8fa0c0; line-height:1.7;
+    }
+    .info-card em { color:#ffe9a0; font-style:normal; font-weight:700; }
+
+    /* ── 控制区 ── */
+    .controls { margin-top:14px; display:flex; flex-direction:column; gap:10px; }
+    .sc-chips { display:grid; grid-template-columns:repeat(6,1fr); gap:6px; }
+    .chip {
+        border:1px solid rgba(255,215,0,.18); background:rgba(255,215,0,.06);
+        color:#d8c98a; font-size:13px; font-weight:600; padding:7px 0;
+        border-radius:12px; cursor:pointer; transition:all .2s; text-align:center;
+    }
+    .chip:hover { background:rgba(255,215,0,.18); }
+    .chip.sel { background:linear-gradient(135deg,#ffe9a0,#ffc93d); color:#1a1408; border-color:#ffd24d; box-shadow:0 2px 10px rgba(255,200,60,.35); }
+    .time-row { display:flex; gap:8px; align-items:center; }
+    .time-row input[type="time"], .date-row input[type="date"] {
+        flex:1; background:rgba(10,13,28,.92); border:1px solid rgba(255,215,0,.22);
+        border-radius:14px; padding:9px 12px; color:#f0e8b0; font-size:15px; outline:none;
+        font-variant-numeric:tabular-nums; color-scheme:dark;
+    }
+    .date-row { display:flex; gap:8px; align-items:center; }
+    .date-row .lbl { font-size:12px; color:#8fa0c0; white-space:nowrap; padding-left:2px; }
+    .step-btn {
+        border:1px solid rgba(255,215,0,.22); background:rgba(255,215,0,.08);
+        color:#ffd966; font-size:12px; font-weight:600; padding:9px 11px;
+        border-radius:12px; cursor:pointer; transition:background .2s; white-space:nowrap;
+    }
+    .step-btn:hover { background:rgba(255,215,0,.2); }
+    .btn-row { display:flex; gap:10px; }
+    .btn { flex:1; border:none; border-radius:14px; padding:10px 0; font-size:13.5px; font-weight:700; cursor:pointer; letter-spacing:1px; transition:transform .15s; }
+    .btn:active { transform:scale(.96); }
+    .btn-gold { background:linear-gradient(135deg,#ffe9a0,#ffc93d); color:#1a1408; box-shadow:0 4px 14px rgba(255,200,60,.3); }
+    .btn-ghost { background:rgba(255,215,0,.08); color:#ffd966; border:1px solid rgba(255,215,0,.25); }
+
+    /* ── 穴位信息卡弹层 ── */
+    .petal { pointer-events:auto; cursor:pointer; }
+    .center-label { pointer-events:auto; cursor:pointer; }
+    .acu-mask {
+        position:fixed; inset:0; background:rgba(2,4,10,.7); backdrop-filter:blur(3px);
+        display:none; align-items:center; justify-content:center; padding:20px; z-index:99;
+    }
+    .acu-mask.show { display:flex; }
+    .acu-card {
+        max-width:400px; width:100%; max-height:76vh; overflow-y:auto;
+        background:linear-gradient(160deg, rgba(22,26,52,.98), rgba(10,12,28,.99));
+        border:1px solid rgba(255,215,0,.35); border-radius:22px; padding:20px 18px;
+        box-shadow:0 20px 60px rgba(0,0,0,.9), 0 0 40px rgba(255,200,60,.15);
+        animation:cardIn .35s cubic-bezier(.34,1.3,.64,1);
+    }
+    @keyframes cardIn { from { opacity:0; transform:translateY(16px) scale(.96);} to { opacity:1; transform:none;} }
+    .acu-card .acu-title {
+        font-size:19px; font-weight:700; color:#ffe9a0; letter-spacing:2px;
+        display:flex; justify-content:space-between; align-items:center;
+    }
+    .acu-card .acu-close {
+        border:1px solid rgba(255,215,0,.3); background:rgba(255,215,0,.08); color:#ffd966;
+        width:28px; height:28px; border-radius:50%; font-size:14px; cursor:pointer; line-height:1;
+    }
+    .acu-card .acu-tag {
+        display:inline-block; margin:8px 0 10px; padding:3px 12px; border-radius:20px;
+        background:rgba(255,215,0,.12); border:1px solid rgba(255,215,0,.28);
+        font-size:12px; color:#ffd966; letter-spacing:1px;
+    }
+    .acu-card .acu-sec { margin-top:8px; }
+    .acu-card .acu-sec .k {
+        font-size:11.5px; color:#8fa0c0; letter-spacing:2px; margin-bottom:3px;
+        border-left:2.5px solid rgba(255,200,60,.6); padding-left:7px;
+    }
+    .acu-card .acu-sec .v { font-size:13.5px; color:#dde4f2; line-height:1.75; }
+    .acu-card .acu-div { height:1px; background:linear-gradient(90deg,transparent,rgba(255,215,0,.3),transparent); margin:14px 0 4px; }
+    .acu-card .acu-tip { margin-top:12px; font-size:11px; color:#5a6a88; text-align:center; letter-spacing:1px; }
+</style>
+</head>
+<body>
+<div class="container" id="appContainer">
+    <div class="title-bar">
+        <h1>移光定位 · 花开子午</h1>
+        <p>子午流注 · 井荥输经合</p>
+    </div>
+
+    <div class="header">
+        <div class="time-now" id="nowDisplay">--:--:--</div>
+        <div class="ganzhi" id="ganzhiDisplay">日干：<span class="g" id="dayGan">-</span>｜<span class="kai" id="kaiStatus">-</span></div>
+    </div>
+
+    <div class="kai-banner" id="kaiBanner">开天门：-</div>
+
+    <div class="clock-wrap">
+        <div class="clock" id="clockFace">
+            <div class="petals" id="petalsContainer"></div>
+            <div class="center-label">
+                <div class="big" id="centerBig">-</div>
+                <div class="sub" id="centerSub">-</div>
+            </div>
+        </div>
+    </div>
+
+    <div class="info-card" id="infoText">
+        当前：<em id="dayInfo">-</em>　<em id="shiInfo">-</em>时 · 第<em id="segLabel">-</em>段<br>
+        主穴：<em id="acupointLabel">-</em>
+    </div>
+
+    <div class="controls">
+        <div class="sc-chips" id="scChips"></div>
+        <div class="date-row">
+            <span class="lbl">查任意日期</span>
+            <input type="date" id="datePicker">
+            <button class="step-btn" id="btnQuery">看花开</button>
+        </div>
+        <div class="time-row">
+            <button class="step-btn" data-step="-15">−15分</button>
+            <button class="step-btn" data-step="-1">−1分</button>
+            <input type="time" id="timePicker" value="12:00">
+            <button class="step-btn" data-step="1">＋1分</button>
+            <button class="step-btn" data-step="15">＋15分</button>
+        </div>
+        <div class="btn-row">
+            <button class="btn btn-gold" id="playBtn">▶ 播放演示</button>
+            <button class="btn btn-ghost" id="resetBtn">⟲ 回到此刻</button>
+        </div>
+    </div>
+    <div class="acu-mask" id="acuMask"><div class="acu-card" id="acuCard"></div></div>
+</div>
+
+<script>
+/* ================= 数据 ================= */
+const DATA = {
+    '甲': {
+        '子':['窍阴','前谷','陷谷、丘墟','阳溪','委中'],
+        '丑':['大敦','少府','太白','经渠','阴谷'],
+        '寅':['少泽','内庭','三间、腕骨','昆仑','阳陵泉'],
+        '卯':['少冲','大都','太渊','复溜','曲泉'],
+        '辰':['关冲','液门','中渚、阳池','支沟','天井'],
+        '巳':['隐白','鱼际','太溪','中封','少海'],
+        '午':['商阳','通谷','临泣、合谷','阳谷','足三里'],
+        '未':['少商','然谷','太冲','灵道','阳陵泉'],
+        '申':['至阴','侠溪','后溪、京骨','解溪','曲池'],
+        '酉':['中冲','劳宫','大陵','间使','曲泽'],
+        '戌':['窍阴','前谷','陷谷、丘墟','阳溪','委中'],
+        '亥':['大敦','少府','太白','经渠','阴谷']
+    },
+    '乙': {
+        '子':['少泽','内庭','三间、腕骨','昆仑','阳陵泉'],
+        '丑':['少冲','大都','太渊','复溜','曲泉'],
+        '寅':['厉兑','二间','束骨、冲阳','阳辅','小海'],
+        '卯':['中冲','劳宫','大陵','间使','曲泽'],
+        '辰':['商阳','通谷','临泣、合谷','阳谷','足三里'],
+        '巳':['少商','然谷','太冲','灵道','阳陵泉'],
+        '午':['至阴','侠溪','后溪、京骨','解溪','曲池'],
+        '未':['涌泉','行间','神门','商丘','尺泽'],
+        '申':['关冲','液门','中渚、阳池','支沟','天井'],
+        '酉':['大敦','少府','太白','经渠','阴谷'],
+        '戌':['少泽','内庭','三间、腕骨','昆仑','阳陵泉'],
+        '亥':['少冲','大都','太渊','复溜','曲泉']
+    },
+    '丙': {
+        '子':['厉兑','二间','束骨、冲阳','阳辅','小海'],
+        '丑':['隐白','鱼际','太溪','中封','少海'],
+        '寅':['关冲','液门','中渚、阳池','支沟','天井'],
+        '卯':['少商','然谷','太冲','灵道','阳陵泉'],
+        '辰':['至阴','侠溪','后溪、京骨','解溪','曲池'],
+        '巳':['涌泉','行间','神门','商丘','尺泽'],
+        '午':['窍阴','前谷','陷谷、丘墟','阳溪','委中'],
+        '未':['中冲','劳宫','大陵','间使','曲泽'],
+        '申':['少泽','内庭','三间、腕骨','昆仑','阳陵泉'],
+        '酉':['少冲','大都','太渊','复溜','曲泉'],
+        '戌':['厉兑','二间','束骨、冲阳','阳辅','小海'],
+        '亥':['隐白','鱼际','太溪','中封','少海']
+    },
+    '丁': {
+        '子':['商阳','通谷','临泣、合谷','阳谷','足三里'],
+        '丑':['中冲','劳宫','大陵','间使','曲泽'],
+        '寅':['至阴','侠溪','后溪、京骨','解溪','曲池'],
+        '卯':['涌泉','行间','神门','商丘','尺泽'],
+        '辰':['窍阴','前谷','陷谷、丘墟','阳溪','委中'],
+        '巳':['大敦','少府','太白','经渠','阴谷'],
+        '午':['关冲','液门','中渚、阳池','支沟','天井'],
+        '未':['少冲','大都','太渊','复溜','曲泉'],
+        '申':['厉兑','二间','束骨、冲阳','阳辅','小海'],
+        '酉':['隐白','鱼际','太溪','中封','少海'],
+        '戌':['商阳','通谷','临泣、合谷','阳谷','足三里'],
+        '亥':['少商','然谷','太冲','灵道','阴陵泉']
+    },
+    '戊': {
+        '子':['关冲','液门','中渚、阳池','支沟','天井'],
+        '丑':['涌泉','行间','神门','商丘','尺泽'],
+        '寅':['窍阴','前谷','陷谷、丘墟','阳溪','委中'],
+        '卯':['大敦','少府','太白','经渠','阴谷'],
+        '辰':['少泽','内庭','三间、腕骨','昆仑','阳陵泉'],
+        '巳':['中冲','劳宫','大陵','间使','曲泽'],
+        '午':['厉兑','二间','束骨、冲阳','阳辅','小海'],
+        '未':['隐白','鱼际','太溪','中封','少海'],
+        '申':['商阳','通谷','临泣、合谷','阳谷','足三里'],
+        '酉':['少商','然谷','太冲','灵道','阴陵泉'],
+        '戌':['至阴','侠溪','后溪、京骨','解溪','曲池'],
+        '亥':['涌泉','行间','神门','商丘','尺泽']
+    }
+};
+const DATA_MAP = {'甲':'甲','己':'甲','乙':'乙','庚':'乙','丙':'丙','辛':'丙','丁':'丁','壬':'丁','戊':'戊','癸':'戊'};
+const KAI_TIAN_MEN = {'甲':'酉','己':'辰','乙':'申','庚':'卯','丙':'未','辛':'寅','丁':'午','壬':'丑','戊':'巳','癸':'子'};
+const SHI_CHEN = ['子','丑','寅','卯','辰','巳','午','未','申','酉','戌','亥'];
+const SHI_START = [23,1,3,5,7,9,11,13,15,17,19,21];
+const SEG_NAMES = ['井','荥','输','经','合'];
+
+/* ================= 干支推算（修正：1900-01-01 为甲戌日） ================= */
+const GAN_NAMES = ['甲','乙','丙','丁','戊','己','庚','辛','壬','癸'];
+const BASE = new Date(1900,0,1);
+function getDayGanZhi(date) {
+    const d = new Date(date); d.setHours(0,0,0,0);
+    const days = Math.round((d - BASE) / 86400000);
+    return { gan: GAN_NAMES[(days % 10 + 10) % 10],
+             zhi: SHI_CHEN[((10 + days) % 12 + 12) % 12] }; /* 甲戌起 */
+}
+
+/* 时辰（修正：子时 23:00–00:59 跨天判断） */
+function getShiChenIndex(hour) {
+    return Math.floor(((hour + 1) % 24) / 2);
+}
+
+/* ================= 核心推算 ================= */
+function getAcupointInfo(d) {
+    const hour = d.getHours(), minute = d.getMinutes();
+    const { gan: dayGan, zhi: dayZhi } = getDayGanZhi(d);
+    const kaiShi = KAI_TIAN_MEN[dayGan];
+    const kaiHour = SHI_START[SHI_CHEN.indexOf(kaiShi)];
+
+    let actualGan = dayGan;
+    const now = new Date(d), kaiTime = new Date(d);
+    kaiTime.setHours(kaiHour, 0, 0, 0);
+    if (now < kaiTime) {
+        actualGan = getDayGanZhi(new Date(d.getFullYear(), d.getMonth(), d.getDate() - 1)).gan;
+    }
+
+    const dataKey = DATA_MAP[actualGan] || '甲';
+    const shiIdx = getShiChenIndex(hour);
+    const shiChen = SHI_CHEN[shiIdx];
+    /* 时辰干支：五鼠遁，由【当日日干】起子时天干（时柱为历法事实，不随气交而变） */
+    const QI_ZI = {'甲':0,'己':0,'乙':2,'庚':2,'丙':4,'辛':4,'丁':6,'壬':6,'戊':8,'癸':8};
+    const shiGanZhi = GAN_NAMES[(QI_ZI[dayGan] + shiIdx) % 10] + shiChen;
+    let offset = ((hour - SHI_START[shiIdx] + 24) % 24) * 60 + minute;
+    const segIdx = Math.min(4, Math.floor(offset / 24));
+    const acupoints = DATA[dataKey][shiChen];
+    const isKaiHour = (SHI_CHEN.indexOf(shiChen) === SHI_CHEN.indexOf(kaiShi));
+    const isKai = (hour === kaiHour && minute < 5);
+
+    /* 距开天门倒计时 */
+    let minsToKai = ((kaiHour - hour) * 60 - minute + 1440) % 1440;
+    if (minsToKai === 0) minsToKai = 1440;
+    const kaiPassed = now >= kaiTime;
+
+    return { dayGan, dayZhi, actualGan, shiChen, shiIdx, segIdx,
+             segName: SEG_NAMES[segIdx], mainPoint: acupoints[segIdx],
+             acupoints, isKai, isKaiHour, kaiShi, kaiHour, offset,
+             shiGanZhi, minsToKai, kaiPassed };
+}
+
+/* ================= 穴位资料库：归经 · 定位 · 主治 ================= */
+const ACU_INFO = {
+'窍阴':  ['足少阳胆经 · 井穴','足第4趾外侧，趾甲角旁0.1寸','头目胀痛、耳鸣耳聋、胁痛、失眠多梦。泻胆火、利头窍'],
+'前谷':  ['手太阳小肠经 · 荥穴','小指尺侧，第5掌指关节前方凹陷处','头痛项强、耳鸣咽痛、热病汗不出。清热通络'],
+'陷谷':  ['足阳明胃经 · 输穴','足背第2、3跖骨结合部前方凹陷','面浮身肿、腹痛肠鸣、足背肿痛。和胃利水'],
+'丘墟':  ['足少阳胆经 · 原穴','外踝前下方凹陷处','胁肋胀痛、踝关节扭伤、目赤肿痛。疏利肝胆'],
+'阳溪':  ['手阳明大肠经 · 经穴','腕背横纹桡侧，拇长、短伸肌腱之间凹陷','头痛齿痛、咽喉肿痛、手腕痛。清热散风'],
+'委中':  ['足太阳膀胱经 · 合穴','腘窝横纹中点','腰背痛（"腰背委中求"）、下肢痿痹、暑热吐泻。舒筋活络、凉血泻热'],
+'大敦':  ['足厥阴肝经 · 井穴','足大趾外侧，趾甲角旁0.1寸','疝气、崩漏、遗尿、癫狂。疏肝理气、调经止崩'],
+'少府':  ['手少阴心经 · 荥穴','手掌第4、5掌骨之间，握拳时小指尖所指处','心悸胸痛、失眠、小便不利、掌中热。清心泻火'],
+'太白':  ['足太阴脾经 · 输穴（原穴）','足内侧缘，第1跖骨小头后下方凹陷','胃痛腹胀、泄泻、身重肢倦。健脾化湿'],
+'经渠':  ['手太阴肺经 · 经穴','腕掌侧横纹上1寸，桡动脉桡侧凹陷','咳嗽气喘、咽喉肿痛、手腕痛。宣肺止咳'],
+'阴谷':  ['足少阴肾经 · 合穴','腘窝内侧，半腱肌腱与半膜肌腱之间','腰膝酸软、月经不调、小便不利。补肾调经'],
+'少泽':  ['手太阳小肠经 · 井穴','小指尺侧，指甲角旁0.1寸','乳痈缺乳、头痛咽痛、昏迷。通乳清热、醒神开窍'],
+'内庭':  ['足阳明胃经 · 荥穴','足背第2、3趾间缝纹端','齿痛咽痛、胃热口臭、腹胀泄泻。清胃泻火'],
+'三间':  ['手阳明大肠经 · 输穴','手背第2掌指关节桡侧后方凹陷','目痛齿痛、咽喉肿痛、手指肿痛。清热止痛'],
+'腕骨':  ['手太阳小肠经 · 原穴','手掌尺侧，第5掌骨基底与钩骨之间凹陷','头痛项强、耳鸣、黄疸、腕痛。舒筋利节'],
+'昆仑':  ['足太阳膀胱经 · 经穴','外踝尖与跟腱之间凹陷','头痛项强、腰骶痛、足踝肿痛、滞产。舒筋通络'],
+'阳陵泉':['足少阳胆经 · 合穴（筋会）','小腿外侧，腓骨小头前下方凹陷','胁痛口苦、下肢痿痹、筋脉拘挛。疏肝利胆、舒筋活络'],
+'少冲':  ['手少阴心经 · 井穴','小指桡侧，指甲角旁0.1寸','心悸心痛、癫狂、热病昏迷。清心醒神'],
+'大都':  ['足太阴脾经 · 荥穴','足内侧，第1跖趾关节前下方凹陷','腹胀胃痛、泄泻、热病无汗。健脾清热'],
+'太渊':  ['手太阴肺经 · 输穴（原穴 · 脉会）','腕掌侧横纹桡侧，桡动脉搏动处','咳嗽气喘、无脉症、腕臂痛。补肺益气、止咳平喘'],
+'复溜':  ['足少阴肾经 · 经穴','太溪直上2寸，跟腱前缘','水肿盗汗、腰膝酸软、泄泻。补肾利水、固表止汗'],
+'曲泉':  ['足厥阴肝经 · 合穴','屈膝，膝内侧横纹头上方凹陷','月经不调、疝气、膝膑肿痛、小便不利。柔肝理气'],
+'关冲':  ['手少阳三焦经 · 井穴','无名指尺侧，指甲角旁0.1寸','头痛目赤、咽喉肿痛、热病昏迷。泻热醒神'],
+'液门':  ['手少阳三焦经 · 荥穴','手背第4、5指间缝纹端','头痛耳鸣、咽喉肿痛、疟疾。清热利窍'],
+'中渚':  ['手少阳三焦经 · 输穴','手背第4、5掌骨之间凹陷','耳鸣耳聋、头痛、肩背痛、手指屈伸不利。通络止痛'],
+'阳池':  ['手少阳三焦经 · 原穴','腕背横纹中，指伸肌腱尺侧凹陷','腕痛、消渴、耳聋、肩臂痛。疏利三焦'],
+'支沟':  ['手少阳三焦经 · 经穴','腕背横纹上3寸，尺骨与桡骨之间','便秘、胁肋痛、耳鸣、热病。通便导滞、理气止痛'],
+'天井':  ['手少阳三焦经 · 合穴','屈肘，肘尖直上1寸凹陷','偏头痛、瘰疬、肘臂痛。清热散结'],
+'隐白':  ['足太阴脾经 · 井穴','足大趾内侧，趾甲角旁0.1寸','崩漏便血、腹胀、多梦癫狂。健脾统血'],
+'鱼际':  ['手太阴肺经 · 荥穴','手掌第1掌骨桡侧中点，赤白肉际','咳嗽咯血、咽喉肿痛、发热。清肺利咽'],
+'太溪':  ['足少阴肾经 · 输穴（原穴）','内踝尖与跟腱之间凹陷','腰膝酸软、耳鸣失眠、月经不调、咽干。补肾滋阴'],
+'中封':  ['足厥阴肝经 · 经穴','内踝前1寸，胫骨前肌腱内侧凹陷','疝气、遗精、小便不利、踝痛。疏肝利湿'],
+'少海':  ['手少阴心经 · 合穴','屈肘，肘横纹内侧端与肱骨内上髁连线中点','心痛失眠、肘臂挛痛、瘰疬。宁心安神'],
+'商阳':  ['手阳明大肠经 · 井穴','食指桡侧，指甲角旁0.1寸','咽喉肿痛、齿痛、热病昏迷。清热利咽、醒神开窍'],
+'通谷':  ['足太阳膀胱经 · 荥穴（足通谷）','足外侧，第5跖趾关节前方凹陷','头痛项强、目眩、鼻衄。疏风清头'],
+'临泣':  ['足少阳胆经 · 输穴（足临泣，通带脉）','足背第4、5跖骨结合部前方凹陷','偏头痛、目赤、胁痛、月经不调。疏利肝胆'],
+'合谷':  ['手阳明大肠经 · 原穴','手背第1、2掌骨之间，第2掌骨桡侧中点','头面五官诸疾（"面口合谷收"）、外感发热、痛经。疏风解表、通络镇痛'],
+'阳谷':  ['手太阳小肠经 · 经穴','腕背横纹尺侧，尺骨茎突与三角骨之间凹陷','头痛耳鸣、腕痛、癫狂。清热安神'],
+'足三里':['足阳明胃经 · 合穴','犊鼻下3寸，胫骨前嵴外一横指','胃肠诸疾、虚劳羸瘦，保健要穴。健脾和胃、扶正培元'],
+'少商':  ['手太阴肺经 · 井穴','拇指桡侧，指甲角旁0.1寸','咽喉肿痛、发热、昏迷。清肺利咽、醒神开窍'],
+'然谷':  ['足少阴肾经 · 荥穴','足内侧，舟骨粗隆下方凹陷','月经不调、遗精、消渴、咽痛。滋阴清热'],
+'太冲':  ['足厥阴肝经 · 输穴（原穴）','足背第1、2跖骨结合部前方凹陷','头痛眩晕、胁痛、月经不调、急躁易怒。疏肝理气、平肝潜阳'],
+'灵道':  ['手少阴心经 · 经穴','腕掌侧横纹上1.5寸，尺侧腕屈肌腱桡侧','心悸心痛、暴喑、肘臂痛。宁心通络'],
+'阴陵泉':['足太阴脾经 · 合穴','胫骨内侧髁下缘凹陷','腹胀水肿、小便不利、膝痛。健脾利湿'],
+'至阴':  ['足太阳膀胱经 · 井穴','足小趾外侧，趾甲角旁0.1寸','胎位不正（灸治要穴）、头痛、滞产。正胎顺气、清利头目'],
+'侠溪':  ['足少阳胆经 · 荥穴','足背第4、5趾间缝纹端','头痛耳鸣、胁痛、足背肿痛。清泻肝胆'],
+'后溪':  ['手太阳小肠经 · 输穴（通督脉）','握拳，第5掌指关节后方横纹头','头痛项强、腰背痛、癫狂、疟疾。通督舒筋'],
+'京骨':  ['足太阳膀胱经 · 原穴','足外侧，第5跖骨粗隆前下方','头痛项强、腰痛、癫狂。舒筋清头'],
+'解溪':  ['足阳明胃经 · 经穴','足背踝关节横纹中央，拇长伸肌腱与趾长伸肌腱之间','头痛眩晕、腹胀、踝关节痛。和胃舒筋'],
+'曲池':  ['手阳明大肠经 · 合穴','屈肘，肘横纹外侧端凹陷','发热咽痛、手臂肿痛、皮肤瘾疹、血压偏高。清热解表、调和气血'],
+'中冲':  ['手厥阴心包经 · 井穴','中指尖端中央','心痛昏迷、中暑、小儿惊风。清心醒神、开窍泻热'],
+'劳宫':  ['手厥阴心包经 · 荥穴','握拳，中指尖所对掌心处','心悸失眠、口疮口臭、癫狂。清心泻火、安神'],
+'大陵':  ['手厥阴心包经 · 输穴（原穴）','腕掌侧横纹中央，掌长肌腱与桡侧腕屈肌腱之间','心悸心痛、胃痛呕吐、癫狂。宁心安神、宽胸和胃'],
+'间使':  ['手厥阴心包经 · 经穴','腕掌侧横纹上3寸，两肌腱之间','心悸心痛、疟疾、癫狂。宽胸理气'],
+'曲泽':  ['手厥阴心包经 · 合穴','肘横纹中，肱二头肌腱尺侧缘','心痛心悸、胃痛呕泻、肘臂痛。清心泻火'],
+'涌泉':  ['足少阴肾经 · 井穴','足底前1/3凹陷处','昏迷急救、头痛眩晕、失眠、虚火上炎。引火归元、醒神开窍'],
+'行间':  ['足厥阴肝经 · 荥穴','足背第1、2趾间缝纹端','头痛目赤、胁痛、月经不调、急躁易怒。清肝泻火'],
+'神门':  ['手少阴心经 · 输穴（原穴）','腕掌侧横纹尺侧端，尺侧腕屈肌腱桡侧凹陷','失眠多梦、心悸健忘、癫狂。宁心安神要穴'],
+'商丘':  ['足太阴脾经 · 经穴','内踝前下方凹陷','腹胀泄泻、踝痛、黄疸。健脾化湿'],
+'尺泽':  ['手太阴肺经 · 合穴','肘横纹中，肱二头肌腱桡侧缘','咳嗽气喘、咯血、肘臂挛痛、小儿惊风。清肺降逆'],
+'厉兑':  ['足阳明胃经 · 井穴','足第2趾外侧，趾甲角旁0.1寸','齿痛鼻衄、癫狂、多梦、热病。清胃泻火'],
+'二间':  ['手阳明大肠经 · 荥穴','食指桡侧，第2掌指关节前方凹陷','齿痛咽痛、目痛、肩背痛。清热消肿'],
+'束骨':  ['足太阳膀胱经 · 输穴','足外侧，第5跖趾关节后方凹陷','头痛项强、腰腿痛、癫狂。舒筋通络'],
+'冲阳':  ['足阳明胃经 · 原穴','足背最高处，足背动脉搏动处','胃痛腹胀、足背肿痛、癫狂。和胃通络'],
+'阳辅':  ['足少阳胆经 · 经穴','外踝尖上4寸，腓骨前缘','偏头痛、胁痛、下肢痿痹。疏利肝胆'],
+'小海':  ['手太阳小肠经 · 合穴','肘内侧，尺骨鹰嘴与肱骨内上髁之间凹陷','肘臂麻痛、耳鸣、癫狂。通络安神'],
+};
+
+/* ================= UI ================= */
+const $ = id => document.getElementById(id);
+const clockFace = $('clockFace'), petalsBox = $('petalsContainer');
+
+SHI_CHEN.forEach((n, i) => {
+    const a = (i / 12) * Math.PI * 2 - Math.PI / 2;
+    const el = document.createElement('div');
+    el.className = 'shi-chen-label'; el.dataset.shi = n; el.textContent = n;
+    el.style.left = (50 + 42 * Math.cos(a)) + '%';
+    el.style.top  = (50 + 42 * Math.sin(a)) + '%';
+    clockFace.appendChild(el);
+});
+
+['jing','ying','shu','jing2','he'].forEach((cls, i) => {
+    const a = (i / 5) * 360 - 90 + 36;
+    const r = a * Math.PI / 180;
+    const el = document.createElement('div');
+    el.className = `petal ${cls}`; el.dataset.seg = i; el.dataset.ang = a;
+    el.style.left = (50 + 25 * Math.cos(r)) + '%';
+    el.style.top  = (50 + 25 * Math.sin(r)) + '%';
+    el.style.transform = `translate(-50%,-50%) rotate(${a}deg)`;
+    el.innerHTML = `<span class="name" style="transform:rotate(${-a}deg)">${SEG_NAMES[i]}</span>`;
+    petalsBox.appendChild(el);
+});
+
+/* 时辰快捷 chips */
+const chipsBox = $('scChips');
+SHI_CHEN.forEach((n, i) => {
+    const c = document.createElement('div');
+    c.className = 'chip'; c.textContent = n; c.dataset.h = SHI_START[i];
+    c.onclick = () => { stopPlay(); setHour(SHI_START[i]); };
+    chipsBox.appendChild(c);
+});
+
+let currentTime = new Date();
+let playing = false, playTimer = null, followNow = true;
+
+function updateDisplay(d) {
+    const info = getAcupointInfo(d);
+    const p2 = x => String(x).padStart(2,'0');
+    $('nowDisplay').textContent = `${p2(d.getHours())}:${p2(d.getMinutes())}:${p2(d.getSeconds())}`;
+    $('dayGan').textContent = `${info.actualGan}（${info.dayGan}${info.dayZhi}日）`;
+    $('kaiStatus').textContent = info.isKai ? '天门正开' : `${info.kaiShi}时开`;
+
+    /* 开天门状态条 */
+    const kb = $('kaiBanner');
+    const kaiHM = `${p2(info.kaiHour)}:00`;
+    if (info.isKaiHour) {
+        kb.classList.add('open');
+        kb.innerHTML = `⛩ <em>开天门正当时</em>｜${info.dayGan}日 <em>${info.kaiShi}时（${kaiHM}）</em>气交，<em>${info.actualGan}</em>气当令，诸花由此而开`;
+    } else if (info.kaiPassed) {
+        kb.classList.remove('open');
+        kb.innerHTML = `⛩ ${info.dayGan}日开天门已过（<em>${info.kaiShi}时 ${kaiHM}</em>）｜<em>${info.actualGan}</em>气当令中`;
+    } else {
+        kb.classList.remove('open');
+        const hh = Math.floor(info.minsToKai / 60), mm = info.minsToKai % 60;
+        kb.innerHTML = `⛩ 距开天门 <em>${hh}时${mm}分</em>｜${info.dayGan}日 <em>${info.kaiShi}时（${kaiHM}）</em>开，届时由前日之气转 <em>${info.dayGan}</em> 气当令`;
+    }
+
+    document.querySelectorAll('.shi-chen-label').forEach(el =>
+        el.classList.toggle('active', el.dataset.shi === info.shiChen));
+    document.querySelectorAll('.chip').forEach(el =>
+        el.classList.toggle('sel', SHI_CHEN[SHI_START.indexOf(+el.dataset.h)] === info.shiChen));
+
+    document.querySelectorAll('.petal').forEach(el => {
+        const i = +el.dataset.seg;
+        const active = i === info.segIdx;
+        const wasActive = el.classList.contains('active');
+        if (active && !wasActive) {           /* 重触发绽放动画：顺次花开 */
+            el.classList.remove('active'); void el.offsetWidth;
+        }
+        el.classList.toggle('active', active);
+        const a = +el.dataset.ang;
+        const r = a * Math.PI / 180;
+        const rad = active ? 25 : 23.5;
+        el.style.left = (50 + rad * Math.cos(r)) + '%';
+        el.style.top  = (50 + rad * Math.sin(r)) + '%';
+        el.style.transform = `translate(-50%,-50%) rotate(${a}deg) scale(${active ? 1.12 : 1})`;
+        el.querySelector('.name').textContent = active ? info.mainPoint : SEG_NAMES[i];
+    });
+
+    $('centerBig').textContent = info.segName;
+    $('centerSub').textContent = info.mainPoint;
+    $('dayInfo').textContent = `${info.dayGan}${info.dayZhi}日` +
+        (info.actualGan !== info.dayGan ? `（${info.actualGan}气当令）` : '');
+    $('shiInfo').textContent = `${info.shiGanZhi}`;
+    $('segLabel').textContent = info.segName;
+    $('acupointLabel').textContent = info.mainPoint;
+    $('timePicker').value = `${p2(d.getHours())}:${p2(d.getMinutes())}`;
+    $('datePicker').value = `${d.getFullYear()}-${p2(d.getMonth()+1)}-${p2(d.getDate())}`;
+
+    $('appContainer').classList.toggle('kai-tianmen', info.isKai);
+    clockFace.classList.toggle('kai', info.isKaiHour); /* 整个开天门时辰保持金边 */
+
+    lastInfo = info;
+}
+
+/* ── 穴位信息卡 ── */
+let lastInfo = null;
+function showAcuCard(namesStr) {
+    const names = namesStr.split('、');
+    let html = '';
+    names.forEach((n, idx) => {
+        const a = ACU_INFO[n];
+        if (!a) return;
+        if (idx > 0) html += '<div class="acu-div"></div>';
+        html += `<div class="acu-title"><span>${n}</span>${idx === 0 ? '<button class="acu-close" onclick="hideAcuCard()">✕</button>' : ''}</div>
+                 <span class="acu-tag">${a[0]}</span>
+                 <div class="acu-sec"><div class="k">定 位</div><div class="v">${a[1]}</div></div>
+                 <div class="acu-sec"><div class="k">主 治</div><div class="v">${a[2]}</div></div>`;
+    });
+    if (!html) return;
+    $('acuCard').innerHTML = html + '<div class="acu-tip">教学示意 · 取穴请遵专业医师指导</div>';
+    $('acuMask').classList.add('show');
+}
+function hideAcuCard() { $('acuMask').classList.remove('show'); }
+$('acuMask').addEventListener('click', e => { if (e.target === $('acuMask')) hideAcuCard(); });
+document.querySelector('.center-label').onclick = () => { if (lastInfo) showAcuCard(lastInfo.mainPoint); };
+document.querySelectorAll('.petal').forEach(el => el.onclick = () => {
+    if (lastInfo) showAcuCard(lastInfo.acupoints[+el.dataset.seg]);
+});
+
+/* ================= 时间控制 ================= */
+function setHour(h) {
+    followNow = false;
+    const d = new Date(currentTime); d.setHours(h, 0, d.getSeconds(), 0);
+    currentTime = d; updateDisplay(d);
+}
+$('timePicker').addEventListener('change', e => {
+    const m = e.target.value.match(/^(\d{2}):(\d{2})$/);
+    if (!m) return;
+    stopPlay(); followNow = false;
+    const d = new Date(currentTime); d.setHours(+m[1], +m[2], 0, 0);
+    currentTime = d; updateDisplay(d);
+});
+/* 查任意日期的花开 */
+function doQuery() {
+    const dv = $('datePicker').value, tv = $('timePicker').value;
+    if (!dv || !tv) return;
+    stopPlay(); followNow = false;
+    const d = new Date(dv + 'T' + tv + ':00');
+    if (isNaN(d)) return;
+    currentTime = d; updateDisplay(d);
+}
+$('datePicker').addEventListener('change', doQuery);
+$('btnQuery').onclick = doQuery;
+document.querySelectorAll('.step-btn').forEach(b => b.onclick = () => {
+    stopPlay(); followNow = false;
+    const d = new Date(currentTime); d.setMinutes(d.getMinutes() + (+b.dataset.step));
+    currentTime = d; updateDisplay(d);
+});
+function stopPlay() { if (playing) togglePlay(); }
+function togglePlay() {
+    playing = !playing;
+    $('playBtn').textContent = playing ? '⏸ 暂停' : '▶ 播放演示';
+    if (playing) {
+        followNow = false;
+        playTimer = setInterval(() => {
+            const d = new Date(currentTime); d.setMinutes(d.getMinutes() + 1);
+            currentTime = d; updateDisplay(d);
+        }, 150);
+    } else clearInterval(playTimer);
+}
+$('playBtn').onclick = togglePlay;
+$('resetBtn').onclick = () => { stopPlay(); followNow = true; currentTime = new Date(); updateDisplay(currentTime); };
+
+setInterval(() => {
+    if (followNow && !playing) { currentTime = new Date(); updateDisplay(currentTime); }
+}, 1000);
+
+updateDisplay(currentTime);
+</script>
+</body>
+</html>
