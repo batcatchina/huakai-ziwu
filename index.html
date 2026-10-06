@@ -235,7 +235,11 @@
         </div>
         <div class="btn-row">
             <button class="btn btn-gold" id="playBtn">▶ 播放演示</button>
-            <button class="btn btn-ghost" id="resetBtn">⟲ 回到此刻</button>
+            <button class="btn btn-ghost" id="musicBtn">♪ 五音：关</button>
+            <button class="btn btn-ghost" id="resetBtn">⟲ 此刻</button>
+        </div>
+        <div style="text-align:center;font-size:10.5px;color:#4a5878;margin-top:4px;letter-spacing:.5px;">
+            五音配乐：古琴名曲录音 · Charlie Huang 演奏（CC BY-SA 3.0，Wikimedia Commons）
         </div>
     </div>
     <div class="acu-mask" id="acuMask"><div class="acu-card" id="acuCard"></div></div>
@@ -538,10 +542,97 @@ function updateDisplay(d) {
     clockFace.classList.toggle('kai', info.isKaiHour); /* 整个开天门时辰保持金边 */
 
     lastInfo = info;
+    musicSync(info);
+}
+
+/* ── 五音疗法：时辰五行切换，交叉淡入淡出 ── */
+let lastInfo = null;
+const WUXING_MAP = { /* 时辰 → [音频, 调式·五行《曲目》] 古琴录音：Charlie Huang（CC BY-SA） */
+    '子':['shui-yu','羽调 · 水《流水》'],'丑':['shui-yu','羽调 · 水《流水》'],
+    '寅':['mu-jue','角调 · 木《神人畅》'],'卯':['mu-jue','角调 · 木《神人畅》'],
+    '辰':['tu-gong','宫调 · 土《孔子读易》'],'巳':['tu-gong','宫调 · 土《孔子读易》'],
+    '午':['huo-zhi','徵调 · 火《酒狂》'],'未':['huo-zhi','徵调 · 火《酒狂》'],
+    '申':['jin-shang','商调 · 金《平沙落雁》'],'酉':['jin-shang','商调 · 金《平沙落雁》'],
+    '戌':['tu-gong','宫调 · 土《孔子读易》'],'亥':['tu-gong','宫调 · 土《孔子读易》'],
+};
+const MUSIC_TARGET = 0.7, FADE_MS = 3400;
+const tracks = {};
+let musicOn = false, curTrackKey = null, fadeTimer = null;
+
+function ensureTracks() {
+    for (const k of ['shui-yu','mu-jue','huo-zhi','jin-shang','tu-gong']) {
+        if (!tracks[k]) {
+            const a = new Audio('audio/' + k + '.mp3');
+            a.loop = true; a.volume = 0; a.preload = 'auto';
+            tracks[k] = a;
+        }
+    }
+}
+const smooth = t => t * t * (3 - 2 * t);   /* S曲线，两端无台阶感 */
+function fadeTo(key) {
+    if (key === curTrackKey) return;
+    curTrackKey = key;
+    clearInterval(fadeTimer);
+    const to = tracks[key];
+    /* 收集所有仍在发声的其他轨道（不止上一首），全部纳入淡出 */
+    const others = Object.entries(tracks)
+        .filter(([k, a]) => k !== key && (a.volume > 0 || !a.paused))
+        .map(([k, a]) => ({ a, v0: a.volume }));
+    if (to.paused) { to.currentTime = 0; to.play().catch(()=>{}); }
+    const v0to = to.volume, steps = 34, dt = FADE_MS / steps;
+    let i = 0;
+    fadeTimer = setInterval(() => {
+        i++;
+        const t = smooth(i / steps);
+        to.volume = Math.min(MUSIC_TARGET, v0to + (MUSIC_TARGET - v0to) * t);
+        others.forEach(o => { o.a.volume = Math.max(0, o.v0 * (1 - t)); });
+        if (i >= steps) {
+            clearInterval(fadeTimer);
+            others.forEach(o => { o.a.pause(); o.a.currentTime = 0; o.a.volume = 0; });
+        }
+    }, dt);
+    $('musicBtn').textContent = '♪ ' + (Object.values(WUXING_MAP).find(v=>v[0]===key)||['','五音'])[1];
+}
+function stopMusic() {
+    clearInterval(fadeTimer);
+    Object.values(tracks).forEach(a => { a.pause(); a.currentTime = 0; a.volume = 0; });
+    curTrackKey = null;
+    $('musicBtn').textContent = '♪ 五音：关';
+}
+$('musicBtn').onclick = () => {
+    ensureTracks();
+    musicOn = !musicOn;
+    if (musicOn) {
+        const sc = lastInfo ? lastInfo.shiChen : '子';
+        fadeTo(WUXING_MAP[sc][0]);
+        if (lastInfo && lastInfo.isKaiHour) bellAccent();
+    } else stopMusic();
+};
+let bellAudio = null;
+function bellAccent() {
+    /* 开天门编钟：淡入 → 停留 → 淡出，不与底曲硬叠 */
+    if (bellAudio) { bellAudio.pause(); }
+    bellAudio = new Audio('audio/jin-shang.mp3');
+    bellAudio.volume = 0; bellAudio.loop = false;
+    bellAudio.play().catch(()=>{});
+    const t0 = Date.now();
+    const tick = setInterval(() => {
+        const el = (Date.now() - t0) / 1000;
+        if (el < 1.2) bellAudio.volume = 0.45 * (el / 1.2);
+        else if (el < 3.2) bellAudio.volume = 0.45;
+        else if (el < 5.2) bellAudio.volume = Math.max(0, 0.45 * (1 - (el - 3.2) / 2));
+        else { bellAudio.pause(); clearInterval(tick); }
+    }, 100);
+}
+/* 时辰变化时由 updateDisplay 调用 */
+function musicSync(info) {
+    if (!musicOn) return;
+    fadeTo(WUXING_MAP[info.shiChen][0]);
+    if (info.isKai) bellAccent();   /* 天门正开瞬间，编钟一声 */
 }
 
 /* ── 穴位信息卡 ── */
-let lastInfo = null;
+let _cardInit = null;
 function showAcuCard(namesStr) {
     const names = namesStr.split('、');
     let html = '';
